@@ -1,3 +1,5 @@
 py4j==0.10.9.9
 pyspark==4.1.2
 uv==0.11.25
+kagglehub==0.4.3
+kagglesdk>=0.1.14,<1.0
