@@ -29,7 +29,12 @@ def test_spark_config_defaults():
 
 
 def test_get_settings_raises_without_required_env(monkeypatch):
-    for key in ["ETL__INPUT_PATH", "ETL__OUTPUT_PATH", "ETL_INPUT_PATH", "ETL_OUTPUT_PATH"]:
+    for key in [
+        "ETL__INPUT_PATH",
+        "ETL__OUTPUT_PATH",
+        "ETL_INPUT_PATH",
+        "ETL_OUTPUT_PATH",
+    ]:
         monkeypatch.delenv(key, raising=False)
     with pytest.raises(Exception):
         get_settings(_env_file=None)
