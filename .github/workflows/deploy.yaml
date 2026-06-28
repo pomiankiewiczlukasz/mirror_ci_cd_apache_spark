@@ -1,0 +1,64 @@
+name: Deploy to GCP
+
+on:
+    workflow_run:
+        workflows: ["CI"]
+        branches: [main]
+        types: [completed]
+    workflow_dispatch:
+    
+    #schedule:
+    #    - cron: "0 6 * * 1"  # Every Monday at 6:00 UTC
+
+env:
+  GCP_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: europe-west1
+
+
+jobs:
+  deploy:
+    name: Build → Upload GCS → Submit Dataproc job
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Build wheel
+        run: |
+          pip install build
+          python -m build --wheel --outdir dist/
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Upload code to GCS
+        run: |
+          gcloud storage cp main.py \
+            gs://${{ secrets.GCS_BUCKET }}/jobs/main.py
+          gcloud storage cp dist/*.whl \
+            gs://${{ secrets.GCS_BUCKET }}/packages/us_accidents_etl-latest.whl
+
+      - name: Submit Dataproc job
+        run: |
+          gcloud dataproc jobs submit pyspark \
+            gs://${{ secrets.GCS_BUCKET }}/jobs/main.py \
+            --cluster=${{ secrets.DATAPROC_CLUSTER }} \
+            --region=${{ env.GCP_REGION }} \
+            --project=${{ env.GCP_PROJECT }} \
+            --py-files=gs://${{ secrets.GCS_BUCKET }}/packages/us_accidents_etl-latest.whl \
+            -- \
+            --master=yarn \
+            --input-path=gs://${{ secrets.GCS_BUCKET }}/raw/US_Accidents_March23.csv \
+            --output-path=gs://${{ secrets.GCS_BUCKET }}/processed/us_accidents
