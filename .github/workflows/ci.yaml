@@ -25,7 +25,7 @@ jobs:
       - name: ruff check
         run: ruff check src/ tests/
 
-        
+
   test:
     name: Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
@@ -33,7 +33,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.10"]
+        python-version: ["3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v5
@@ -61,3 +61,16 @@ jobs:
           --cov=src/us_accidents_etl
           --cov-report=term-missing
           --cov-report=xml
+      
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-xml-${{ matrix.python-version }}
+          path: coverage.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          fail_ci_if_error: false
